@@ -1,23 +1,43 @@
 "use client";
 import { useState } from "react";
-import { Modal } from "@/components/ui";
+import { Icon } from "@/components/Icon";
+import { Empty, Modal, ModalHead, PageHead } from "@/components/ui";
 import { useApp } from "@/lib/store";
 
 export default function Alunos() {
   const { db, adicionarAluno, alternarPacote } = useApp();
   const [novo, setNovo] = useState(false); const [n, setN] = useState(""); const [r, setR] = useState(""); const [e, setE] = useState("");
-  return (<>
-    <div className="top"><div className="grow"><h1>Alunos</h1><p className="muted">Responsáveis recebem apenas e-mails, sem login.</p></div><button className="btn" onClick={() => setNovo(true)}>+ Novo aluno</button></div>
-    <div className="card"><table className="t"><thead><tr><th>Aluno</th><th>Responsável</th><th>Aulas futuras</th><th>Pacote</th><th></th></tr></thead><tbody>
-      {db.alunos.map((a) => (<tr key={a.id}><td><b>{a.nome}</b></td><td>{a.responsavel}<div className="muted small">{a.emailResp}</div></td>
-        <td>{db.aulas.filter((x) => x.alunoId === a.id && x.status === "agendada" && x.data >= new Date().toISOString().slice(0, 10)).length}</td>
-        <td><span className={`pill ${a.pacote === "ativo" ? "ok" : "bad"}`}>{a.pacote === "ativo" ? "Ativo" : "Suspenso"}</span></td>
-        <td><button className={`btn sm ${a.pacote === "ativo" ? "bad" : "sec"}`} onClick={() => alternarPacote(a.id)}>{a.pacote === "ativo" ? "Suspender pacote" : "Reativar"}</button></td></tr>))}</tbody></table>
-      <p className="small muted" style={{ marginTop: 12 }}>Suspender o pacote cancela as aulas futuras do aluno. Cancelar uma aula avulsa não afeta as seguintes (faça isso pela agenda).</p></div>
-    {novo && <Modal onClose={() => setNovo(false)}><h2>Novo aluno</h2>
-      <label className="f">Nome do aluno<input className="in" value={n} onChange={(x) => setN(x.target.value)} /></label>
-      <label className="f">Responsável<input className="in" value={r} onChange={(x) => setR(x.target.value)} /></label>
-      <label className="f">E-mail do responsável<input className="in" type="email" value={e} onChange={(x) => setE(x.target.value)} /></label>
-      <div className="row" style={{ justifyContent: "flex-end" }}><button className="btn ghost" onClick={() => setNovo(false)}>Cancelar</button><button className="btn" disabled={!n || !r || !e} onClick={() => { adicionarAluno(n, r, e); setNovo(false); }}>Salvar</button></div></Modal>}
-  </>);
+  const hoje = new Date().toISOString().slice(0, 10);
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+  const fechar = () => { setNovo(false); setN(""); setR(""); setE(""); };
+  return (<div className="main-inner">
+    <PageHead title="Alunos" sub="Responsáveis recebem apenas e-mails, sem login.">
+      <button className="btn" onClick={() => setNovo(true)}><Icon name="plus" stroke={2} />Novo aluno</button>
+    </PageHead>
+    <section className="panel" aria-label="Lista de alunos" style={{ overflow: "hidden" }}>
+      {db.alunos.length === 0 ? <Empty icon="users" title="Nenhum aluno cadastrado" action={<button className="btn sec" onClick={() => setNovo(true)}>Cadastrar aluno</button>}>Cadastre o aluno e o e-mail do responsável para agendar aulas.</Empty> : (
+      <div className="table-wrap"><table className="t">
+        <thead><tr><th>Aluno</th><th className="hide-m">Responsável</th><th className="num hide-m">Aulas futuras</th><th>Pacote</th><th><span className="sr-only">Ações</span></th></tr></thead>
+        <tbody>{db.alunos.map((a) => (<tr key={a.id}>
+          <td><div className="who-txt" style={{ display: "flex", flexDirection: "column" }}><b>{a.nome}</b><span className="small muted only-m">{a.responsavel}</span></div></td>
+          <td className="hide-m"><div style={{ display: "flex", flexDirection: "column" }}>{a.responsavel}<span className="small muted">{a.emailResp}</span></div></td>
+          <td className="num hide-m">{db.aulas.filter((x) => x.alunoId === a.id && x.status === "agendada" && x.data >= hoje).length}</td>
+          <td><span className={`chip ${a.pacote === "ativo" ? "ok" : "gray"}`}>{a.pacote === "ativo" ? "Ativo" : "Suspenso"}</span></td>
+          <td className="num"><button className={`btn sm ${a.pacote === "ativo" ? "danger" : "sec"}`} onClick={() => alternarPacote(a.id)}>{a.pacote === "ativo" ? "Suspender pacote" : "Reativar"}</button></td>
+        </tr>))}</tbody>
+      </table></div>)}
+      <div className="panel-foot small muted row" style={{ flexWrap: "nowrap", alignItems: "flex-start" }}><Icon name="info" size={16} style={{ flex: "none", marginTop: 1 }} />Suspender o pacote cancela as aulas futuras do aluno. Cancelar uma aula avulsa não afeta as seguintes (faça isso pela agenda).</div>
+    </section>
+    {novo && (
+      <Modal onClose={fechar} narrow label="Novo aluno">
+        <ModalHead title="Novo aluno" sub="O responsável recebe confirmações e relatórios por e-mail." onClose={fechar} />
+        <div className="m-body">
+          <label className="field"><span className="label">Nome do aluno</span><input className="in" value={n} onChange={(x) => setN(x.target.value)} /></label>
+          <label className="field"><span className="label">Responsável</span><input className="in" value={r} onChange={(x) => setR(x.target.value)} /></label>
+          <label className="field"><span className="label">E-mail do responsável</span><input className={`in ${e && !emailOk ? "err" : ""}`} type="email" value={e} onChange={(x) => setE(x.target.value)} aria-invalid={!!e && !emailOk} />
+            {e && !emailOk && <span className="hint err">Confira o e-mail: falta algo como nome@dominio.com.</span>}</label>
+        </div>
+        <div className="m-foot"><span className="grow hide-m" /><button className="btn ghost" onClick={fechar}>Cancelar</button><button className="btn" disabled={!n || !r || !emailOk} onClick={() => { adicionarAluno(n, r, e); fechar(); }}>Salvar aluno</button></div>
+      </Modal>)}
+  </div>);
 }
